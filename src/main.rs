@@ -1,9 +1,8 @@
 use anyhow::Result;
-use bytes::BytesMut;
-use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
-    net::{TcpListener, TcpStream},
-};
+use tokio::net::{TcpListener, TcpStream};
+
+mod resp;
+use resp::{Connection as RespConnection, Value as RespValue};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -14,10 +13,10 @@ async fn main() -> Result<()> {
     loop {
         let incoming = listener.accept().await;
         match incoming {
-            Ok((mut stream, _)) => {
+            Ok((stream, _)) => {
                 println!("accepted new connection");
                 tokio::spawn(async move {
-                    handle_connection(&mut stream).await.unwrap();
+                    handle_connection(stream).await.unwrap();
                 });
             }
             Err(e) => {
@@ -27,18 +26,23 @@ async fn main() -> Result<()> {
     }
 }
 
-async fn handle_connection(stream: &mut TcpStream) -> Result<()> {
-    let mut buf = BytesMut::with_capacity(512);
+async fn handle_connection(stream: TcpStream) -> Result<()> {
+    let mut conn = RespConnection::new(stream);
+    while let Some((command, args)) = conn.read_command().await? {
+        let response = match command.to_ascii_lowercase().as_str() {
+            "ping" => RespValue::SimpleString("PONG".to_string()),
+            "echo" => {
+                if args.len() == 1 {
+                    args.first().unwrap().clone()
+                } else {
+                    RespValue::Error("echo requires exactly one argument".to_string())
+                }
+            }
+            _ => RespValue::Error(format!("command not implemented: {}", command)),
+        };
 
-    loop {
-        // Wait for the client to send us a message but ignore the content for now
-        let bytes_read = stream.read(&mut buf).await?;
-        if bytes_read == 0 {
-            println!("client closed the connection");
-            break;
-        }
-
-        stream.write("+PONG\r\n".as_bytes()).await?;
+        conn.write_value(&response).await?;
     }
+
     Ok(())
 }
