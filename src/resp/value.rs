@@ -54,6 +54,9 @@ const CARRIAGE_RETURN: u8 = b'\r';
 const LINE_FEED: u8 = b'\n';
 
 pub fn parse_message(buffer: BytesMut) -> Result<Option<(Value, usize)>> {
+    if buffer.is_empty() {
+        return Ok(None);
+    }
     match buffer[0] as char {
         '+' => decode_simple_string(buffer),
         '$' => decode_bulk_string(buffer),

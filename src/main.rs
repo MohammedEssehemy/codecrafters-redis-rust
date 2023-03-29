@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Error, Result};
 use tokio::net::{TcpListener, TcpStream};
 
 mod resp;
@@ -16,7 +16,9 @@ async fn main() -> Result<()> {
             Ok((stream, _)) => {
                 println!("accepted new connection");
                 tokio::spawn(async move {
-                    handle_connection(stream).await.unwrap();
+                    handle_connection(stream).await.unwrap_or_else(|e| {
+                        eprintln!("error while handling connection {e}");
+                    });
                 });
             }
             Err(e) => {
