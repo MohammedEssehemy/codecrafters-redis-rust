@@ -1,22 +1,29 @@
-use anyhow::{Error, Result};
+use anyhow::Result;
+use std::sync::{Arc, Mutex};
 use tokio::net::{TcpListener, TcpStream};
 
+mod command;
+mod db;
 mod resp;
-use resp::{Connection as RespConnection, Value as RespValue};
+
+use command::Command;
+use db::DB;
+use resp::Connection as RespConnection;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     println!("Logs from your program will appear here!");
 
     let listener = TcpListener::bind("127.0.0.1:6379").await?;
-
+    let db = Arc::new(Mutex::new(DB::new()));
     loop {
         let incoming = listener.accept().await;
         match incoming {
             Ok((stream, _)) => {
                 println!("accepted new connection");
+                let db = Arc::clone(&db);
                 tokio::spawn(async move {
-                    handle_connection(stream).await.unwrap_or_else(|e| {
+                    handle_connection(stream, db).await.unwrap_or_else(|e| {
                         eprintln!("error while handling connection {e}");
                     });
                 });
@@ -28,21 +35,10 @@ async fn main() -> Result<()> {
     }
 }
 
-async fn handle_connection(stream: TcpStream) -> Result<()> {
+async fn handle_connection(stream: TcpStream, db: Arc<Mutex<DB>>) -> Result<()> {
     let mut conn = RespConnection::new(stream);
-    while let Some((command, args)) = conn.read_command().await? {
-        let response = match command.to_ascii_lowercase().as_str() {
-            "ping" => RespValue::SimpleString("PONG".to_string()),
-            "echo" => {
-                if args.len() == 1 {
-                    args.first().unwrap().clone()
-                } else {
-                    RespValue::Error("echo requires exactly one argument".to_string())
-                }
-            }
-            _ => RespValue::Error(format!("command not implemented: {}", command)),
-        };
-
+    while let Some((cmd, args)) = conn.read_command().await? {
+        let response = Command::reply(&cmd, args, db.clone());
         conn.write_value(&response).await?;
     }
 

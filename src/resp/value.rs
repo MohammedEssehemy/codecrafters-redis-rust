@@ -7,6 +7,8 @@ pub enum Value {
     SimpleString(String),
     /// encoded "$5\r\nhello\r\n"
     BulkString(String),
+    /// Null bulk reply, `$-1\r\n`
+    Null,
     /// encoded "-Error message\r\n"
     Error(String),
     /// encoded ":0\r\n"
@@ -37,6 +39,7 @@ impl Value {
 
     pub fn encode(&self) -> String {
         match &self {
+            Value::Null => "$-1\r\n".to_string(),
             Value::SimpleString(s) => format!("+{}\r\n", s),
             Value::Error(msg) => format!("-{}\r\n", msg),
             Value::Integer(i) => format!(":{}\r\n", i),
