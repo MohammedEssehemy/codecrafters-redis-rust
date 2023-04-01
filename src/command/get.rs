@@ -13,7 +13,6 @@ impl Reply for GetCommand {
             db.lock()
                 .unwrap()
                 .get(key)
-                .cloned()
                 .map(|s| RespValue::SimpleString(s))
                 .unwrap_or(RespValue::Null)
         } else {

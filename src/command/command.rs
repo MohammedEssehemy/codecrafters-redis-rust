@@ -1,6 +1,6 @@
-use anyhow::Error;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
+use thiserror::Error;
 
 use crate::db::DB;
 use crate::resp::Value as RespValue;
@@ -33,8 +33,14 @@ impl Command {
     }
 }
 
+#[derive(Error, Debug)]
+pub enum CommandError {
+    #[error("command not found: ({0})")]
+    InValidCommand(String),
+}
+
 impl FromStr for Command {
-    type Err = Error;
+    type Err = CommandError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
@@ -42,7 +48,7 @@ impl FromStr for Command {
             "echo" => Ok(Command::Echo(EchoCommand)),
             "get" => Ok(Command::Get(GetCommand)),
             "set" => Ok(Command::Set(SetCommand)),
-            _ => Err(Error::msg("command not found")),
+            _ => Err(CommandError::InValidCommand(s.to_string())),
         }
     }
 }
