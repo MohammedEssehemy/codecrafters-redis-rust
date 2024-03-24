@@ -1,6 +1,7 @@
 mod command;
 mod echo;
 mod get;
+mod info;
 mod ping;
 mod reply;
 mod set;
