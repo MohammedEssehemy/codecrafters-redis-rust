@@ -31,6 +31,8 @@ struct DBVal {
 
 pub struct DB {
     pub role: NodeRole,
+    pub replid: String,
+    pub repl_offset: i32,
     data: HashMap<String, DBVal>,
 }
 
@@ -38,6 +40,8 @@ impl DB {
     pub fn new(role: NodeRole) -> Self {
         Self {
             role,
+            replid: "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb".to_string(),
+            repl_offset: 0,
             data: HashMap::new(),
         }
     }
