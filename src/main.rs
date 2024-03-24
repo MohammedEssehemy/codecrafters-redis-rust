@@ -1,5 +1,8 @@
 use anyhow::Result;
-use std::sync::{Arc, Mutex};
+use std::{
+    env::args,
+    sync::{Arc, Mutex},
+};
 use tokio::net::{TcpListener, TcpStream};
 
 mod command;
@@ -14,7 +17,13 @@ use resp::Connection as RespConnection;
 async fn main() -> Result<()> {
     println!("Logs from your program will appear here!");
 
-    let listener = TcpListener::bind("127.0.0.1:6379").await?;
+    let port = match args().nth(1).as_ref().map(|s| s.as_str()) {
+        Some("--port") => args().nth(2).expect("port is required"),
+        _ => "6379".to_string(),
+    };
+
+    let listener = TcpListener::bind(format!("127.0.0.1:{port}")).await?;
+    println!("Listening on port {port}");
     let db = Arc::new(Mutex::new(DB::new()));
     loop {
         let incoming = listener.accept().await;
@@ -38,7 +47,9 @@ async fn main() -> Result<()> {
 async fn handle_connection(stream: TcpStream, db: Arc<Mutex<DB>>) -> Result<()> {
     let mut conn = RespConnection::new(stream);
     while let Some((cmd, args)) = conn.read_command().await? {
+        println!("cmd: {cmd}, args: {args:?}");
         let response = Command::reply(&cmd, args, db.clone());
+        println!("response: {response:?}");
         conn.write_value(&response).await?;
     }
 

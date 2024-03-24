@@ -62,9 +62,20 @@ pub fn parse_message(buffer: BytesMut) -> Result<Option<(Value, usize)>> {
     }
     match buffer[0] as char {
         '+' => decode_simple_string(buffer),
+        ':' => decode_integer(buffer),
         '$' => decode_bulk_string(buffer),
         '*' => decode_array(buffer),
         _ => Err(Error::msg("unrecognised message type")),
+    }
+}
+
+fn decode_integer(buffer: BytesMut) -> Result<Option<(Value, usize)>> {
+    if let Some((line, len)) = read_until_crlf(&buffer[1..]) {
+        let integer = parse_integer(line)?;
+
+        Ok(Some((Value::Integer(integer), len + 1)))
+    } else {
+        Ok(None)
     }
 }
 

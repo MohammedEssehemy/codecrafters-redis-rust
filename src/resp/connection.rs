@@ -34,6 +34,7 @@ impl Connection {
             let message = parse_message(self.buffer.split())?;
             // println!("buffer ressss {:?}", message);
             if let Some((value, _)) = message {
+                println!("message {value:?}");
                 return value.to_command().map(|cmd| Some(cmd));
             }
         }
