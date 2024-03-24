@@ -1,5 +1,27 @@
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::time::{Duration, Instant};
+
+#[derive(Debug)]
+pub struct NodeAddress {
+    pub host: String,
+    pub port: u16,
+}
+
+#[derive(Debug)]
+pub enum NodeRole {
+    Master,
+    Slave(NodeAddress),
+}
+
+impl Display for NodeRole {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            NodeRole::Master => write!(f, "master"),
+            NodeRole::Slave(_) => write!(f, "slave"),
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 struct DBVal {
@@ -8,12 +30,14 @@ struct DBVal {
 }
 
 pub struct DB {
+    pub role: NodeRole,
     data: HashMap<String, DBVal>,
 }
 
 impl DB {
-    pub fn new() -> Self {
+    pub fn new(role: NodeRole) -> Self {
         Self {
+            role,
             data: HashMap::new(),
         }
     }

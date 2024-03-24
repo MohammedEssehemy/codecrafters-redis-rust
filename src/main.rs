@@ -10,21 +10,31 @@ mod db;
 mod resp;
 
 use command::Command;
-use db::DB;
+use db::{NodeAddress, NodeRole, DB};
 use resp::Connection as RespConnection;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     println!("Logs from your program will appear here!");
-
-    let port = match args().nth(1).as_ref().map(|s| s.as_str()) {
-        Some("--port") => args().nth(2).expect("port is required"),
+    let port = match args().position(|s| s == "--port") {
+        Some(i) => args().nth(i + 1).expect("port is required"),
         _ => "6379".to_string(),
+    };
+
+    let role = match args().position(|s| s == "--replicaof") {
+        Some(i) => NodeRole::Slave(NodeAddress {
+            host: args().nth(i + 1).expect("master host is required"),
+            port: args()
+                .nth(i + 2)
+                .map(|p| p.parse().expect("invalid master port"))
+                .expect("master port is required"),
+        }),
+        _ => NodeRole::Master,
     };
 
     let listener = TcpListener::bind(format!("127.0.0.1:{port}")).await?;
     println!("Listening on port {port}");
-    let db = Arc::new(Mutex::new(DB::new()));
+    let db = Arc::new(Mutex::new(DB::new(role)));
     loop {
         let incoming = listener.accept().await;
         match incoming {
